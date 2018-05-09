@@ -1,5 +1,4 @@
 #include <SLA_com.h>
-#include <QDebug>
 
 #include<fcntl.h>
 #include<unistd.h>
@@ -7,17 +6,21 @@
 #include<stdint.h>
 #include<linux/spi/spidev.h>
 
+/****************************************************************
+ * GLOBAL VARIABLE
+ ****************************************************************/
 static struct spi_ioc_transfer spidev1_cfg;
 
+/*Constructor*/
 printerCom::printerCom()
 {
     bits = 8;
     mode = 3;
-    speed = 500000;
+    speed = 1000000;
     SpiConfig();
 }
 
-/**
+/****************************************************************
  * CPOL indicates the initial clock polarity
  * CPOL=0: the clock starts low, the first (leading) edge is rising, and the second (trailing) edge is falling.
  * CPOL=1: the clock starts high, the first (leading) edge is falling.
@@ -31,7 +34,7 @@ printerCom::printerCom()
  * SPI_MODE_1 (0,1): the clock starts low and sample at trailing edge
  * SPI_MODE_2 (1,0): the clock starts high and sample at leading edge
  * SPI_MODE_3 (1,1): the clock starts high and sample at trailing edge
- */
+ ****************************************************************/
 int printerCom::SpiConfig()
 {
     /*
@@ -134,6 +137,66 @@ int printerCom::SpiConfig()
 int printerCom::SpiTransfer(struct CoordData *transmitData, uint8_t *receiveData, uint16_t dataLength)
 {
 
+    /*
+     * Initialize the tx, rx buffer and its length
+     */
+    spidev1_cfg.tx_buf = (uint64_t)transmitData;
+    spidev1_cfg.rx_buf = (uint64_t)receiveData;
+    spidev1_cfg.len = dataLength;
+
+    /* Perform a SPI Transaction */
+    if (ioctl(fd_spi, SPI_IOC_MESSAGE(1), &spidev1_cfg)<0)
+    {
+        qDebug("SPI: SPI_IOC_MESSAGE Failed ");
+        return -1;
+    }
+    return 0;
+}
+
+
+void printerCom::updateDataPacket()
+{
+    /*data handling into 512BYTE here*/
+
+    uint16_t packetID;
+    uint8_t rx[sizeof(m_data)];
+
+    for(packetID=0; packetID < 86; packetID++)
+    {
+        SpiTransfer(m_data, rx, sizeof(m_data[packetID]));
+    }
+
+    uint16_t ii;
+    QStringList spiString;
+    for(ii=0; ii < sizeof(m_data); ii++)
+    {
+        if(((ii+1) % 6)==0)
+        {
+            spiString << QString::number(rx[ii],16).toUpper() << "\n";
+        }
+        else
+        {
+            spiString << QString::number(rx[ii],16).toUpper();
+        }
+
+    }
+}
+
+/****************************************************************
+ * Function Name : SpiTransferDebug
+ * Description   : Performs a SPI transaction in debug mode
+ * Returns       : 0 is success, -1 is failure
+ * Params        @transmitData: Points to the buffer containing the data
+ *               to be sent
+ *               @receiveData: Points to the buffer into which the
+ *               received bytes are stored
+ ****************************************************************/
+int printerCom::SpiTransferDebug(uint8_t *transmitData, uint8_t *receiveData, uint16_t dataLength)
+{
+
+    /*
+     * Initialize the tx, rx buffer and its length
+     */
     spidev1_cfg.tx_buf = (uint64_t)transmitData;
     spidev1_cfg.rx_buf = (uint64_t)receiveData;
     spidev1_cfg.len = dataLength;

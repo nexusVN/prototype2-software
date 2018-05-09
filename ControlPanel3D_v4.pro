@@ -30,10 +30,16 @@ SOURCES += \
 
 HEADERS += \
     SLA_display.h \
-    SLA_com.h
+    SLA_com.h \
+    SLA_typedef.h
 
 FORMS += \
     SLA_display.ui
 
 target.path += /home/debian/qtApp
 INSTALLS += target
+
+RESOURCES += \
+    image.qrc
+
+DISTFILES +=

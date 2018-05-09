@@ -6,9 +6,7 @@
 #include <QListWidgetItem>
 
 #include <SLA_com.h>
-
-#define MAX_LAYER_ID    5000
-#define MAX_PACKET_ID	5000
+#include <SLA_typedef.h>
 
 namespace Ui {
 class printerDisplay;
@@ -30,22 +28,16 @@ private slots:
 
     void on_printButton_clicked();
 
-    void on_resetButton_clicked();
+    void on_spiDebugButton_clicked();
 
-    void on_cancelButton_clicked();
-
-    void on_commandButton_clicked();
+    void autoDisplay3DModel();
 
 private:
     Ui::printerDisplay *ui;
+    uint8_t state;
+    double counter_1s=6;
 };
 
-struct CoordData{
-    uint16_t Xcoord;
-    uint16_t Ycoord;
-    uint8_t Gcommand;
-};
 
-extern struct CoordData m_data[MAX_LAYER_ID];
 
 #endif // SLA_DISPLAY_H
