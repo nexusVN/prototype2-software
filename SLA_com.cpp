@@ -15,7 +15,7 @@ static struct spi_ioc_transfer spidev1_cfg;
 printerCom::printerCom()
 {
     bits = 8;
-    mode = 3;
+    mode = SPI_MODE_3;
     speed = 1000000;
     SpiConfig();
 }
@@ -134,7 +134,7 @@ int printerCom::SpiConfig()
  *               @receiveData: Points to the buffer into which the
  *               received bytes are stored
  ****************************************************************/
-int printerCom::SpiTransfer(struct CoordData *transmitData, uint8_t *receiveData, uint16_t dataLength)
+int printerCom::SpiTransfer(struct CoordData *transmitData, uint16_t *receiveData, uint16_t dataLength)
 {
 
     /*
@@ -154,31 +154,69 @@ int printerCom::SpiTransfer(struct CoordData *transmitData, uint8_t *receiveData
 }
 
 
-void printerCom::updateDataPacket()
+void printerCom::update_dataPacket()
 {
-    /*data handling into 512BYTE here*/
+    static uint16_t packetAddr = 0;
+    uint16_t rx[NUM_PACKET_SEND] = {0,};
 
-    uint16_t packetID;
-    uint8_t rx[sizeof(m_data)];
+    /*receive tx packet and display*/
+    uint8_t ii;
+    static QStringList spiString;
 
-    for(packetID=0; packetID < 86; packetID++)
+
+    if(packetLength>=1)
     {
-        SpiTransfer(m_data, rx, sizeof(m_data[packetID]));
+        qDebug() << "numPacket transmit" << numPacket;
+
+        for(ii = packetAddr; ii < (packetAddr+NUM_PACKET_SEND); ii++)
+        {
+            qDebug() << "size of data packet" << sizeof(m_data[ii]);
+            SpiTransfer(m_data+packetAddr, rx, sizeof(m_data[ii]));
+
+            /*if detect element 6th then make a new line*/
+            if(((ii+1) % 6)==0)
+            {
+                /*convert received data into hex type*/
+                spiString << QString::number(rx[ii],10).toUpper() << "\n";
+            }
+            else
+            {
+                spiString << QString::number(rx[ii],10).toUpper();
+            }
+        }
+
+        packetAddr = packetAddr + NUM_PACKET_SEND;
+        packetLength --;
+    }
+    /* number of packet smaller than 64 */
+    else
+    {
+        qDebug() << "packet length transmit" <<packetLength;
+        qDebug() << "packet left transmit" <<packetLeft;
+
+        for(ii=packetAddr; ii<(packetAddr+packetLeft); ii++)
+        {
+            qDebug() << "size of data packet" << sizeof(m_data[ii]);
+            SpiTransfer(m_data+ii, rx, sizeof(m_data[ii]));
+
+            /*if detect element 6th then make a new line*/
+            if(((ii+1) % 6)==0)
+            {
+                /*convert received data into hex type*/
+                spiString << QString::number(rx[ii],10).toUpper() << "\n";
+            }
+            else
+            {
+                spiString << QString::number(rx[ii],10).toUpper();
+            }
+        }
+
+        emit update_printerState(STATE_COMPLETE);
     }
 
-    uint16_t ii;
-    QStringList spiString;
-    for(ii=0; ii < sizeof(m_data); ii++)
+    if(packetLength == 0)
     {
-        if(((ii+1) % 6)==0)
-        {
-            spiString << QString::number(rx[ii],16).toUpper() << "\n";
-        }
-        else
-        {
-            spiString << QString::number(rx[ii],16).toUpper();
-        }
-
+        qDebug() << "rx data" << spiString;
     }
 }
 
